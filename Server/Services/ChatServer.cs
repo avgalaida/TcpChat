@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Sockets;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Server.Interfaces;
@@ -14,18 +15,22 @@ public class ChatServer : IChatServer
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ChatServer> _logger;
 
-    public ChatServer(IServiceProvider serviceProvider, ILogger<ChatServer> logger)
+    public ChatServer(IServiceProvider serviceProvider, ILogger<ChatServer> logger, IConfiguration configuration)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
         _clients = new ConcurrentDictionary<string, IClientHandler>();
-        _listener = new TcpListener(IPAddress.Any, 3000); 
+
+        var port = configuration.GetValue<int>("ServerSettings:Port");
+        _listener = new TcpListener(IPAddress.Any, port);
+
+        _logger.LogInformation($"Сервер инициализирован на порту {port}.");
     }
 
     public async Task StartAsync()
     {
         _listener.Start();
-        _logger.LogInformation("Сервер запущен на порту 3000.");
+        _logger.LogInformation("Сервер запущен и ожидает подключения клиентов.");
 
         while (true)
         {
