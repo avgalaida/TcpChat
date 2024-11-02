@@ -1,7 +1,25 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using NLog.Extensions.Logging;
+using Server.Data;
+using Server.Interfaces;
+using Server.Services;
 
-var loggerFactory = LoggerFactory.Create(builder =>
+var services = new ServiceCollection();
+
+services.AddSingleton<IChatServer, ChatServer>();
+services.AddTransient<IClientHandler, ClientHandler>();
+services.AddScoped<IMessageRepository, MessageRepository>();
+services.AddDbContext<ChatDbContext>();
+
+services.AddLogging(loggingBuilder =>
 {
-    builder.AddNLog("NLog.config");
+    loggingBuilder.ClearProviders();
+    loggingBuilder.SetMinimumLevel(LogLevel.Information);
+    loggingBuilder.AddNLog("NLog.config");
 });
+
+var serviceProvider = services.BuildServiceProvider();
+
+var server = serviceProvider.GetRequiredService<IChatServer>();
+await server.StartAsync();
