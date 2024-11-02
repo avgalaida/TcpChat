@@ -2,3 +2,4 @@
 /.idea
 /Server/obj
 /Server/bin
+.DS_Store
