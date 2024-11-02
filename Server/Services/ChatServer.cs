@@ -10,7 +10,7 @@ namespace Server.Services;
 public class ChatServer : IChatServer
 {
     private readonly TcpListener _listener;
-    private readonly ConcurrentBag<IClientHandler> _clients;
+    private readonly ConcurrentDictionary<string, IClientHandler> _clients;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<ChatServer> _logger;
 
@@ -18,8 +18,8 @@ public class ChatServer : IChatServer
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
-        _clients = new ConcurrentBag<IClientHandler>();
-        _listener = new TcpListener(IPAddress.Any, 3000);
+        _clients = new ConcurrentDictionary<string, IClientHandler>();
+        _listener = new TcpListener(IPAddress.Any, 3000); 
     }
 
     public async Task StartAsync()
@@ -30,26 +30,71 @@ public class ChatServer : IChatServer
         while (true)
         {
             var tcpClient = await _listener.AcceptTcpClientAsync();
+            _logger.LogInformation($"Получено новое подключение от {tcpClient.Client.RemoteEndPoint}");
+
             var clientHandler = ActivatorUtilities.CreateInstance<ClientHandler>(_serviceProvider, tcpClient, this);
-            _clients.Add(clientHandler);
+            AddClient(clientHandler);
             _ = clientHandler.ProcessAsync();
         }
     }
 
-    public void BroadcastMessage(string message, string sender)
+    public void AddClient(IClientHandler client)
     {
-        foreach (var client in _clients)
+        if (_clients.TryAdd(client.ClientId, client))
         {
-            if (client.ClientId != sender)
-            {
-                client.SendMessageAsync($"{sender}: {message}");
-            }
+            _logger.LogInformation($"Клиент добавлен: {client.ClientId}");
+        }
+        else
+        {
+            _logger.LogWarning($"Не удалось добавить клиента: {client.ClientId}");
         }
     }
 
     public void RemoveClient(IClientHandler client)
     {
-        _clients.TryTake(out client);
-        _logger.LogInformation($"Клиент отключился: {client.ClientId}");
+        if (_clients.TryRemove(client.ClientId, out _))
+        {
+            _logger.LogInformation($"Клиент удален: {client.ClientId}");
+        }
+        else
+        {
+            _logger.LogWarning($"Не удалось удалить клиента: {client.ClientId}");
+        }
+    }
+
+    public async Task BroadcastMessageAsync(string message, string sender)
+    {
+        var tasks = new List<Task>();
+
+        foreach (var client in _clients.Values)
+        {
+            if (client.ClientId != sender)
+            {
+                tasks.Add(SendMessageToClientAsync(client, $"{sender}: {message}"));
+            }
+        }
+
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Ошибка при рассылке сообщений.");
+        }
+    }
+
+    private async Task SendMessageToClientAsync(IClientHandler client, string message)
+    {
+        try
+        {
+            await client.SendMessageAsync(message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Ошибка при отправке сообщения клиенту {client.ClientId}. Клиент будет отключен.");
+            client.Disconnect();
+            RemoveClient(client);
+        }
     }
 }
