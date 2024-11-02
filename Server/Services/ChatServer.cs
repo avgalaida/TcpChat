@@ -19,13 +19,13 @@ public class ChatServer : IChatServer
         _serviceProvider = serviceProvider;
         _logger = logger;
         _clients = new ConcurrentBag<IClientHandler>();
-        _listener = new TcpListener(IPAddress.Any, 5000);
+        _listener = new TcpListener(IPAddress.Any, 3000);
     }
 
     public async Task StartAsync()
     {
         _listener.Start();
-        _logger.LogInformation("Сервер запущен на порту 5000.");
+        _logger.LogInformation("Сервер запущен на порту 3000.");
 
         while (true)
         {
