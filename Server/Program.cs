@@ -1,3 +1,7 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿using Microsoft.Extensions.Logging;
+using NLog.Extensions.Logging;
 
-Console.WriteLine("Hello, World!");
+var loggerFactory = LoggerFactory.Create(builder =>
+{
+    builder.AddNLog("NLog.config");
+});
