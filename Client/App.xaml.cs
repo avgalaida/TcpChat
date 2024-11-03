@@ -15,7 +15,7 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
-        services.AddSingleton<IChatService>(provider => new ChatService("127.0.0.1", 3333));
+        services.AddSingleton<IChatService>(provider => new ChatService("127.0.0.1", 3000));
         services.AddTransient<MainViewModel>();
 
         ServiceProvider = services.BuildServiceProvider();
