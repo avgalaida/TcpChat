@@ -27,7 +27,17 @@ public class MainViewModel : ViewModelBase
 
         SendMessageCommand = new RelayCommand(async () => await SendMessageAsync(), CanSendMessage);
 
-        // TODO: MessageReceived event subscription
+        _chatService.MessageReceived += OnMessageReceived;
+
+        _chatService.Connect();
+    }
+
+    private void OnMessageReceived(object sender, ChatMessage message)
+    {
+        App.Current.Dispatcher.Invoke(() =>
+        {
+            Messages.Add(message);
+        });
     }
 
     private async Task SendMessageAsync()
