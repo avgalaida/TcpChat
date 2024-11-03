@@ -4,3 +4,4 @@
 /Server/bin
 .DS_Store
 /.vs
+/Client/obj
