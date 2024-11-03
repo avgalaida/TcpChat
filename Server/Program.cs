@@ -7,6 +7,8 @@ using Server.Interfaces;
 using Server.Services;
 using Microsoft.EntityFrameworkCore;
 
+Console.OutputEncoding = System.Text.Encoding.UTF8;
+
 var configuration = new ConfigurationBuilder()
     .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
