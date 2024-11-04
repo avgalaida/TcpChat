@@ -34,6 +34,8 @@ public class MainViewModel : ViewModelBase
 
     private void OnMessageReceived(object sender, ChatMessage message)
     {
+        message.IsSentByUser = false;
+
         App.Current.Dispatcher.Invoke(() =>
         {
             Messages.Add(message);
@@ -44,6 +46,15 @@ public class MainViewModel : ViewModelBase
     {
         if (!string.IsNullOrWhiteSpace(NewMessage))
         {
+            var message = new ChatMessage
+            {
+                Content = NewMessage,
+                Timestamp = DateTime.Now,
+                IsSentByUser = true
+            };
+
+            Messages.Add(message);
+
             await _chatService.SendMessageAsync(NewMessage);
             NewMessage = string.Empty;
         }
