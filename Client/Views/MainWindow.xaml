@@ -29,6 +29,21 @@
         <local:MessageTemplateSelector x:Key="MessageTemplateSelector"
                                        SentMessageTemplate="{StaticResource SentMessageTemplate}"
                                        ReceivedMessageTemplate="{StaticResource ReceivedMessageTemplate}" />
+        
+        <!-- Стиль для ListBoxItem с анимацией появления -->
+        <Style TargetType="ListBoxItem">
+            <Setter Property="Opacity" Value="0"/>
+            <Style.Triggers>
+                <EventTrigger RoutedEvent="Loaded">
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                         From="0.0" To="1.0" Duration="0:0:0.3"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
     <Grid>
