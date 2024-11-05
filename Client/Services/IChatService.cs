@@ -4,8 +4,7 @@ namespace Client.Services;
 public interface IChatService
 {
     event EventHandler<ChatMessage> MessageReceived;
-
-    void Connect();
+    Task<bool> ConnectAsync();
+    Task DisconnectAsync();
     Task SendMessageAsync(string message);
-    void Disconnect();
 }
