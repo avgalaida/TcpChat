@@ -1,15 +1,16 @@
-﻿using Client.Models;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 using System.Text;
+using Client.Models;
 
 namespace Client.Services;
-
 public class ChatService : IChatService
 {
     public event EventHandler<ChatMessage> MessageReceived;
 
     private TcpClient _tcpClient;
     private NetworkStream _stream;
+    private CancellationTokenSource _cts;
+
     private readonly string _serverIp;
     private readonly int _serverPort;
 
@@ -19,23 +20,44 @@ public class ChatService : IChatService
         _serverPort = serverPort;
     }
 
-    public void Connect()
+    public async Task<bool> ConnectAsync()
     {
-        _tcpClient = new TcpClient();
-        _tcpClient.Connect(_serverIp, _serverPort);
-        _stream = _tcpClient.GetStream();
+        try
+        {
+            _tcpClient = new TcpClient();
+            await _tcpClient.ConnectAsync(_serverIp, _serverPort);
+            _stream = _tcpClient.GetStream();
+            _cts = new CancellationTokenSource();
 
-        Task.Run(ReceiveMessagesAsync);
+            _ = Task.Run(() => ReceiveMessagesAsync(_cts.Token), _cts.Token);
+
+            return true;
+        }
+        catch (SocketException)
+        {
+            return false;
+        }
+        catch (Exception ex)
+        {
+            return false;
+        }
     }
 
-    public void Disconnect()
+    public async Task DisconnectAsync()
     {
-        _stream?.Close();
-        _tcpClient?.Close();
+        if (_cts != null)
+        {
+            _cts.Cancel();
+        }
+
+        await Task.Run(() => Disconnect());
     }
 
     public async Task SendMessageAsync(string message)
     {
+        if (_stream == null)
+            throw new InvalidOperationException("Not connected to the server.");
+
         var messageBytes = Encoding.UTF8.GetBytes(message);
         var lengthPrefix = BitConverter.GetBytes(messageBytes.Length);
 
@@ -43,13 +65,13 @@ public class ChatService : IChatService
         await _stream.WriteAsync(messageBytes, 0, messageBytes.Length);
     }
 
-    private async Task ReceiveMessagesAsync()
+    private async Task ReceiveMessagesAsync(CancellationToken cancellationToken)
     {
         try
         {
-            while (true)
+            while (!cancellationToken.IsCancellationRequested)
             {
-                var message = await ReadMessageAsync();
+                var message = await ReadMessageAsync(cancellationToken);
                 if (message == null)
                 {
                     break;
@@ -65,20 +87,22 @@ public class ChatService : IChatService
                 MessageReceived?.Invoke(this, chatMessage);
             }
         }
+        catch (OperationCanceledException)
+        {
+        }
         catch (Exception ex)
         {
-            // TODO
         }
         finally
         {
-            Disconnect();
+            await DisconnectAsync();
         }
     }
 
-    private async Task<string> ReadMessageAsync()
+    private async Task<string> ReadMessageAsync(CancellationToken cancellationToken)
     {
         var lengthBuffer = new byte[4];
-        var bytesRead = await _stream.ReadAsync(lengthBuffer, 0, lengthBuffer.Length);
+        var bytesRead = await ReadExactAsync(_stream, lengthBuffer, 0, lengthBuffer.Length, cancellationToken);
         if (bytesRead == 0)
         {
             return null;
@@ -87,19 +111,30 @@ public class ChatService : IChatService
         var messageLength = BitConverter.ToInt32(lengthBuffer, 0);
 
         var messageBuffer = new byte[messageLength];
-        int totalBytesRead = 0;
-        while (totalBytesRead < messageLength)
+        bytesRead = await ReadExactAsync(_stream, messageBuffer, 0, messageLength, cancellationToken);
+        if (bytesRead == 0)
         {
-            bytesRead = await _stream.ReadAsync(messageBuffer, totalBytesRead, messageLength - totalBytesRead);
-            if (bytesRead == 0)
-            {
-                return null;
-            }
-            totalBytesRead += bytesRead;
+            return null;
         }
 
         var message = Encoding.UTF8.GetString(messageBuffer);
         return message;
+    }
+
+    private async Task<int> ReadExactAsync(NetworkStream stream, byte[] buffer, int offset, int size, CancellationToken cancellationToken)
+    {
+        int totalBytesRead = 0;
+        while (totalBytesRead < size)
+        {
+            int bytesRead = await stream.ReadAsync(buffer, offset + totalBytesRead, size - totalBytesRead, cancellationToken);
+            if (bytesRead == 0)
+            {
+                // Соединение закрыто
+                return 0;
+            }
+            totalBytesRead += bytesRead;
+        }
+        return totalBytesRead;
     }
 
     private string ExtractSender(string message)
@@ -114,4 +149,15 @@ public class ChatService : IChatService
         return parts.Length > 1 ? parts[1].Trim() : message;
     }
 
+    private void Disconnect()
+    {
+        try
+        {
+            _stream?.Close();
+            _tcpClient?.Close();
+        }
+        catch (Exception ex)
+        {
+        }
+    }
 }

@@ -1,30 +1,39 @@
-﻿using Client.ViewModels;
-using System.Collections.Specialized;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Input;
+using Client.ViewModels;
+using Client.Services;
 
 namespace Client.Views;
 public partial class MainWindow : Window
 {
+    private readonly MainViewModel _viewModel;
+
     public MainWindow()
     {
         InitializeComponent();
 
-        var viewModel = DataContext as MainViewModel;
-        if (viewModel != null)
-        {
-            var messages = viewModel.Messages;
-            messages.CollectionChanged += Messages_CollectionChanged;
-        }
+        string serverIp = "127.0.0.1"; 
+        int serverPort = 3000;         
+        IChatService chatService = new ChatService(serverIp, serverPort);
 
-        MessageTextBox.KeyDown += MessageTextBox_KeyDown;
+        _viewModel = new MainViewModel(chatService);
+
+        DataContext = _viewModel;
+
+        this.Closing += MainWindow_Closing;
+        this.Loaded += MainWindow_Loaded;
     }
 
-    private void Messages_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
     {
-        if (e.Action == NotifyCollectionChangedAction.Add)
+        //await _viewModel.ConnectAsync();
+    }
+
+    private async void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
+    {
+        if (_viewModel.IsConnected)
         {
-            MessagesListBox.ScrollIntoView(MessagesListBox.Items[MessagesListBox.Items.Count - 1]);
+            await _viewModel.DisconnectAsync();
         }
     }
 
@@ -32,11 +41,10 @@ public partial class MainWindow : Window
     {
         if (e.Key == Key.Enter)
         {
-            var viewModel = DataContext as MainViewModel;
-            if (viewModel?.SendMessageCommand?.CanExecute(null) == true)
+            if (_viewModel.SendMessageCommand.CanExecute(null))
             {
-                viewModel.SendMessageCommand.Execute(null);
-                e.Handled = true; 
+                _viewModel.SendMessageCommand.Execute(null);
+                e.Handled = true;
             }
         }
     }
