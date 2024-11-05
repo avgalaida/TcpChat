@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using Microsoft.Extensions.Logging;
@@ -44,16 +45,22 @@ public class ClientHandler : IClientHandler
 
                 _logger.LogInformation($"Получено сообщение от {ClientId}: {message}");
 
+                var remoteEndPoint = _tcpClient.Client.RemoteEndPoint as IPEndPoint;
+                var senderIp = remoteEndPoint?.Address.ToString();
+                var senderPort = remoteEndPoint?.Port ?? 0;
+
                 var chatMessage = new ChatMessage
                 {
                     Sender = ClientId,
                     Content = message,
-                    Timestamp = DateTime.UtcNow
+                    Timestamp = DateTime.UtcNow,
+                    SenderIp = senderIp,
+                    SenderPort = senderPort
                 };
 
                 await _messageRepository.SaveMessageAsync(chatMessage);
 
-                await _server.BroadcastMessageAsync(message, ClientId);
+                await _server.BroadcastMessageAsync(chatMessage, ClientId);
             }
         }
         catch (Exception ex)

@@ -11,6 +11,7 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="5">
                 <Border Background="#D1E7FF" CornerRadius="10" Padding="10">
                     <StackPanel>
+                        <TextBlock Text="{Binding Sender}" FontWeight="Bold" Foreground="Black" />
                         <TextBlock Text="{Binding Content}" TextWrapping="Wrap" Foreground="Black" />
                         <TextBlock Text="{Binding Timestamp, StringFormat=HH:mm}" FontSize="10" HorizontalAlignment="Right" Foreground="Gray" />
                     </StackPanel>

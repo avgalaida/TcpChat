@@ -1,4 +1,5 @@
-﻿using System.Net.Sockets;
+﻿using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using Client.Models;
 
@@ -51,6 +52,17 @@ public class ChatService : IChatService
         }
 
         await Task.Run(() => Disconnect());
+    }
+    public IPEndPoint LocalEndPoint
+    {
+        get
+        {
+            if (_tcpClient?.Client?.LocalEndPoint is IPEndPoint endPoint)
+            {
+                return endPoint;
+            }
+            return null;
+        }
     }
 
     public async Task SendMessageAsync(string message)
@@ -139,14 +151,28 @@ public class ChatService : IChatService
 
     private string ExtractSender(string message)
     {
-        var parts = message.Split(new[] { ':' }, 2);
-        return parts.Length > 1 ? parts[0] : "Неизвестно";
+        var parts = message.Split(new[] { ':' }, 3);
+        if (parts.Length >= 2)
+        {
+            return $"{parts[0]}:{parts[1]}"; 
+        }
+        else
+        {
+            return "Неизвестно";
+        }
     }
 
     private string ExtractContent(string message)
     {
-        var parts = message.Split(new[] { ':' }, 2);
-        return parts.Length > 1 ? parts[1].Trim() : message;
+        var parts = message.Split(new[] { ':' }, 3);
+        if (parts.Length == 3)
+        {
+            return parts[2].Trim(); 
+        }
+        else
+        {
+            return message;
+        }
     }
 
     private void Disconnect()

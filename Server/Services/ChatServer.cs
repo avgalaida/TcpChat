@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Server.Interfaces;
+using Server.Models;
 
 namespace Server.Services;
 
@@ -67,7 +68,7 @@ public class ChatServer : IChatServer
         }
     }
 
-    public async Task BroadcastMessageAsync(string message, string sender)
+    public async Task BroadcastMessageAsync(ChatMessage message, string sender)
     {
         var tasks = new List<Task>();
 
@@ -75,7 +76,7 @@ public class ChatServer : IChatServer
         {
             if (client.ClientId != sender)
             {
-                tasks.Add(SendMessageToClientAsync(client, $"{sender}: {message}"));
+                tasks.Add(SendMessageToClientAsync(client, $"{message.SenderIp}:{message.SenderPort}: {message.Content}"));
             }
         }
 

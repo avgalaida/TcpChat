@@ -1,4 +1,5 @@
 ﻿using Client.Models;
+using System.Net;
 
 namespace Client.Services;
 public interface IChatService
@@ -7,4 +8,5 @@ public interface IChatService
     Task<bool> ConnectAsync();
     Task DisconnectAsync();
     Task SendMessageAsync(string message);
+    IPEndPoint LocalEndPoint { get; }
 }
