@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.Net;
 using System.Windows;
 using System.Windows.Input;
 using Client.Models;
@@ -111,8 +112,23 @@ namespace Client.ViewModels
         {
             if (!string.IsNullOrWhiteSpace(NewMessage) && IsConnected)
             {
+                IPEndPoint localEndPoint = _chatService.LocalEndPoint;
+                string senderInfo;
+
+                if (localEndPoint != null)
+                {
+                    // Преобразуем адрес к IPv4, если он представлен в IPv6-формате с маппингом IPv4
+                    IPAddress ipv4Address = localEndPoint.Address.MapToIPv4();
+                    senderInfo = $"{ipv4Address}:{localEndPoint.Port}";
+                }
+                else
+                {
+                    senderInfo = "Неизвестен";
+                }
+
                 var message = new ChatMessage
                 {
+                    Sender = senderInfo,
                     Content = NewMessage,
                     Timestamp = DateTime.Now,
                     IsSentByUser = true
