@@ -76,7 +76,7 @@ public class ChatServer : IChatServer
         {
             if (client.ClientId != sender)
             {
-                tasks.Add(SendMessageToClientAsync(client, $"{message.SenderIp}:{message.SenderPort}: {message}"));
+                tasks.Add(SendMessageToClientAsync(client, $"{message.SenderIp}:{message.SenderPort}: {message.Content}"));
             }
         }
 
