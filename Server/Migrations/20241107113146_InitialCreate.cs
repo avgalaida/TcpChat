@@ -13,16 +13,23 @@ namespace Server.Migrations
                 name: "Messages",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Sender = table.Column<string>(type: "TEXT", nullable: false),
+                    Id = table.Column<Guid>(type: "TEXT", nullable: false),
+                    Sender = table.Column<string>(type: "TEXT", maxLength: 100, nullable: false),
                     Content = table.Column<string>(type: "TEXT", nullable: false),
-                    Timestamp = table.Column<DateTime>(type: "TEXT", nullable: false)
+                    Timestamp = table.Column<DateTime>(type: "TEXT", nullable: false),
+                    SenderIp = table.Column<string>(type: "TEXT", maxLength: 45, nullable: false),
+                    SenderPort = table.Column<int>(type: "INTEGER", nullable: false),
+                    Type = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Messages", x => x.Id);
                 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Messages_Timestamp",
+                table: "Messages",
+                column: "Timestamp");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
