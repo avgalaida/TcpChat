@@ -20,8 +20,17 @@ public class MessageRepository : IMessageRepository
         await _context.SaveChangesAsync();
     }
 
-    public async Task<List<ChatMessage>> GetMessagesAsync()
+    public async Task<List<ChatMessage>> GetMessagesAsync(int page, int pageSize)
     {
-        return await _context.Messages.ToListAsync();
+        return await _context.Messages
+            .OrderByDescending(m => m.Timestamp)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+    }
+
+    public async Task<int> CountAsync()
+    {
+        return await _context.Messages.CountAsync();
     }
 }
