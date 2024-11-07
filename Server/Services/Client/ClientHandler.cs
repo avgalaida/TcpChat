@@ -3,18 +3,19 @@ using System.Net.Sockets;
 using System.Text;
 using Microsoft.Extensions.Logging;
 using Server.Models.Messages;
-using Server.Repository;
 using Server.Services.Factories;
 using Server.Services.Server;
 using Server.Utilities;
 
 namespace Server.Services.Client;
 
+/// <summary>
+/// Класс для обработки клиентских подключений и сообщений.
+/// </summary>
 public class ClientHandler : IClientHandler
 {
     private readonly TcpClient _tcpClient;
     private readonly IChatServer _server;
-    private readonly IMessageRepository _messageRepository;
     private readonly NetworkStream _stream;
     private readonly ILogger<ClientHandler> _logger;
     private readonly IMessageSerializer _messageSerializer;
@@ -22,21 +23,33 @@ public class ClientHandler : IClientHandler
 
     private const int MaxMessageLength = 10 * 1024 * 1024; // 10 MB
 
+    /// <summary>
+    /// Уникальный идентификатор клиента.
+    /// </summary>
     public string ClientId { get; }
 
+    /// <summary>
+    /// Конечная точка удаленного клиента (IP-адрес и порт).
+    /// </summary>
     public IPEndPoint RemoteEndPoint => _tcpClient.Client.RemoteEndPoint as IPEndPoint;
 
+    /// <summary>
+    /// Инициализирует новый экземпляр класса <see cref="ClientHandler"/>.
+    /// </summary>
+    /// <param name="tcpClient">TCP-клиент для связи.</param>
+    /// <param name="server">Ссылка на сервер.</param>
+    /// <param name="logger">Логгер для записи логов.</param>
+    /// <param name="messageSerializer">Сериализатор сообщений.</param>
+    /// <param name="handlerFactory">Фабрика обработчиков сообщений.</param>
     public ClientHandler(
         TcpClient tcpClient,
         IChatServer server,
-        IMessageRepository messageRepository,
         ILogger<ClientHandler> logger,
         IMessageSerializer messageSerializer,
         IMessageHandlerFactory handlerFactory)
     {
         _tcpClient = tcpClient;
         _server = server;
-        _messageRepository = messageRepository;
         _logger = logger;
         _messageSerializer = messageSerializer;
         _handlerFactory = handlerFactory;
@@ -46,6 +59,10 @@ public class ClientHandler : IClientHandler
         _logger.LogInformation($"Клиент подключен: {ClientId}, IP: {_tcpClient.Client.RemoteEndPoint}");
     }
 
+    /// <summary>
+    /// Асинхронно обрабатывает сообщения от клиента.
+    /// </summary>
+    /// <returns>Задача, представляющая асинхронную операцию обработки сообщений.</returns>
     public async Task ProcessAsync()
     {
         try
@@ -77,23 +94,20 @@ public class ClientHandler : IClientHandler
         }
     }
 
+    /// <summary>
+    /// Асинхронно отправляет сообщение клиенту.
+    /// </summary>
+    /// <param name="message">Сообщение для отправки.</param>
+    /// <returns>Задача, представляющая асинхронную операцию отправки сообщения.</returns>
     public async Task SendMessageAsync(BaseMessage message)
     {
         var serializedMessage = _messageSerializer.Serialize(message);
         await SendRawMessageAsync(serializedMessage);
     }
 
-    private async Task SendRawMessageAsync(string message)
-    {
-        var messageBytes = Encoding.UTF8.GetBytes(message);
-        var lengthPrefix = BitConverter.GetBytes(messageBytes.Length);
-
-        await _stream.WriteAsync(lengthPrefix, 0, lengthPrefix.Length);
-        await _stream.WriteAsync(messageBytes, 0, messageBytes.Length);
-
-        _logger.LogDebug($"Отправлено сообщение клиенту {ClientId}");
-    }
-
+    /// <summary>
+    /// Отключает клиента и закрывает соединение.
+    /// </summary>
     public void Disconnect()
     {
         try
@@ -108,6 +122,10 @@ public class ClientHandler : IClientHandler
         }
     }
 
+    /// <summary>
+    /// Асинхронно читает сообщение из потока.
+    /// </summary>
+    /// <returns>Строка сообщения в формате JSON или null, если чтение не удалось.</returns>
     private async Task<string> ReadMessageAsync()
     {
         var lengthBuffer = new byte[4];
@@ -130,6 +148,11 @@ public class ClientHandler : IClientHandler
         return Encoding.UTF8.GetString(messageBuffer);
     }
 
+    /// <summary>
+    /// Асинхронно читает определенное количество байт из потока.
+    /// </summary>
+    /// <param name="buffer">Буфер для записи данных.</param>
+    /// <returns>Общее количество прочитанных байт.</returns>
     private async Task<int> ReadExactAsync(byte[] buffer)
     {
         var totalBytesRead = 0;
@@ -142,5 +165,21 @@ public class ClientHandler : IClientHandler
         }
 
         return totalBytesRead;
+    }
+
+    /// <summary>
+    /// Асинхронно отправляет сырое сообщение в виде строки клиенту.
+    /// </summary>
+    /// <param name="message">Сообщение в формате строки.</param>
+    /// <returns>Задача, представляющая асинхронную операцию отправки сообщения.</returns>
+    private async Task SendRawMessageAsync(string message)
+    {
+        var messageBytes = Encoding.UTF8.GetBytes(message);
+        var lengthPrefix = BitConverter.GetBytes(messageBytes.Length);
+
+        await _stream.WriteAsync(lengthPrefix, 0, lengthPrefix.Length);
+        await _stream.WriteAsync(messageBytes, 0, messageBytes.Length);
+
+        _logger.LogDebug($"Отправлено сообщение клиенту {ClientId}");
     }
 }
