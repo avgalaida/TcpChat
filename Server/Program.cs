@@ -65,6 +65,17 @@ using (var scope = serviceProvider.CreateScope())
     dbContext.Database.Migrate(); // Выполнение миграции базы данных
 }
 
+// Создаем источник токена отмены
+using var cts = new CancellationTokenSource();
+
+// Добавляем обработчик для завершения программы при нажатии Ctrl+C
+Console.CancelKeyPress += (sender, e) =>
+{
+    e.Cancel = true;
+    cts.Cancel();
+    Console.WriteLine("Завершается работа сервера...");
+};
+
 // Запуск сервера
 var server = serviceProvider.GetRequiredService<IChatServer>();
-await server.StartAsync(); // Ожидание асинхронного запуска сервера
+await server.StartAsync(cts.Token); // Передаем токен отмены для управления завершением

@@ -9,10 +9,12 @@ namespace Server.Services.Server;
 public interface IChatServer
 {
     /// <summary>
-    /// Асинхронно запускает сервер.
+    /// Асинхронно запускает сервер и ожидает подключения клиентов до тех пор,
+    /// пока не будет получена команда на отмену через <see cref="CancellationToken"/>.
     /// </summary>
+    /// <param name="cancellationToken">Токен для отмены операции, который позволяет завершить работу сервера.</param>
     /// <returns>Задача, представляющая асинхронную операцию запуска сервера.</returns>
-    Task StartAsync();
+    Task StartAsync(CancellationToken cancellationToken);
 
     /// <summary>
     /// Добавляет клиента к серверу.

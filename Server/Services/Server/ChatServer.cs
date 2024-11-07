@@ -37,22 +37,36 @@ public class ChatServer : IChatServer
     }
 
     /// <summary>
-    /// Асинхронно запускает сервер и ожидает подключения клиентов.
+    /// Асинхронно запускает сервер и ожидает подключения клиентов до тех пор, 
+    /// пока не будет получена команда на отмену через <see cref="CancellationToken"/>.
     /// </summary>
+    /// <param name="cancellationToken">Токен для отмены операции, который позволяет завершить работу сервера.</param>
     /// <returns>Задача, представляющая асинхронную операцию запуска сервера.</returns>
-    public async Task StartAsync()
+    public async Task StartAsync(CancellationToken cancellationToken)
     {
         _listener.Start();
         _logger.LogInformation("Сервер запущен и ожидает подключения клиентов.");
 
-        while (true)
+        try
         {
-            var tcpClient = await _listener.AcceptTcpClientAsync();
-            _logger.LogInformation($"Новое подключение от {tcpClient.Client.RemoteEndPoint}");
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var tcpClient = await _listener.AcceptTcpClientAsync();
+                _logger.LogInformation($"Новое подключение от {tcpClient.Client.RemoteEndPoint}");
 
-            var clientHandler = _clientHandlerFactory.CreateClientHandler(tcpClient, this);
-            AddClient(clientHandler);
-            _ = clientHandler.ProcessAsync();
+                var clientHandler = _clientHandlerFactory.CreateClientHandler(tcpClient, this);
+                AddClient(clientHandler);
+                _ = clientHandler.ProcessAsync();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Операция сервера была отменена.");
+        }
+        finally
+        {
+            _listener.Stop();
+            _logger.LogInformation("Сервер остановлен.");
         }
     }
 
