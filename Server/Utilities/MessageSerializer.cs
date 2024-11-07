@@ -6,11 +6,18 @@ using Microsoft.Extensions.Logging;
 
 namespace Server.Utilities;
 
+/// <summary>
+/// Класс для сериализации и десериализации сообщений.
+/// </summary>
 public class MessageSerializer : IMessageSerializer
 {
     private readonly ILogger<MessageSerializer> _logger;
     private readonly JsonSerializerSettings _serializerSettings;
 
+    /// <summary>
+    /// Инициализирует новый экземпляр класса <see cref="MessageSerializer"/>.
+    /// </summary>
+    /// <param name="logger">Экземпляр логгера для записи логов.</param>
     public MessageSerializer(ILogger<MessageSerializer> logger)
     {
         _logger = logger;
@@ -18,16 +25,29 @@ public class MessageSerializer : IMessageSerializer
         {
             Converters = new List<JsonConverter> { new StringEnumConverter() },
             NullValueHandling = NullValueHandling.Ignore,
-            StringEscapeHandling = StringEscapeHandling.Default, 
+            StringEscapeHandling = StringEscapeHandling.Default,
             Formatting = Formatting.None
         };
     }
 
+    /// <summary>
+    /// Сериализует сообщение в строку JSON.
+    /// </summary>
+    /// <param name="message">Сообщение для сериализации.</param>
+    /// <returns>Строка JSON, представляющая сериализованное сообщение.</returns>
     public string Serialize(BaseMessage message)
     {
         return JsonConvert.SerializeObject(message, _serializerSettings);
     }
 
+    /// <summary>
+    /// Десериализует строку JSON в объект сообщения.
+    /// </summary>
+    /// <param name="messageJson">Строка JSON для десериализации.</param>
+    /// <returns>Объект сообщения типа <see cref="BaseMessage"/>.</returns>
+    /// <exception cref="InvalidOperationException">Выбрасывается, если не удается десериализовать сообщение.</exception>
+    /// <exception cref="JsonException">Выбрасывается при ошибке десериализации JSON.</exception>
+    /// <exception cref="NotSupportedException">Выбрасывается при неподдерживаемом типе сообщения.</exception>
     public BaseMessage Deserialize(string messageJson)
     {
         try
