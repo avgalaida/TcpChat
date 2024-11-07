@@ -6,3 +6,5 @@
 /.vs
 /Client/obj
 /Client/bin
+/Tests/obj
+/Tests/bin
