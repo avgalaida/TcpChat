@@ -1,6 +1,6 @@
 namespace Server.Models;
 
-public class ChatMessage
+public class ChatMessage : BaseMessage
 {
     public int Id { get; set; }
     public string Sender { get; set; }
