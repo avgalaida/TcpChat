@@ -18,6 +18,6 @@ public class ChatDbContextFactory : IDesignTimeDbContextFactory<ChatDbContext>
         string connectionString = configuration.GetConnectionString("DefaultConnection");
         optionsBuilder.UseSqlite(connectionString);
 
-        return new ChatDbContext(optionsBuilder.Options, configuration);
+        return new ChatDbContext(optionsBuilder.Options);
     }
 }
