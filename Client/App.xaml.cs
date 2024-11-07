@@ -1,6 +1,7 @@
 ﻿using Client.Services;
 using Client.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Windows;
 
 namespace Client;
@@ -15,17 +16,25 @@ public partial class App : Application
     {
         var services = new ServiceCollection();
 
-        services.AddSingleton<IChatService>(provider => new ChatService("127.0.0.1", 3000));
+        services.AddLogging(configure =>
+        {
+            configure.AddConsole();
+            configure.SetMinimumLevel(LogLevel.Debug);
+        });
+
+        services.AddSingleton<IChatService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<ChatService>>();
+            return new ChatService("127.0.0.1", 3000, logger);
+        });
+
         services.AddTransient<MainViewModel>();
 
         ServiceProvider = services.BuildServiceProvider();
 
-        var mainWindow = new Views.MainWindow
-        {
-            DataContext = ServiceProvider.GetRequiredService<MainViewModel>()
-        };
+        var mainViewModel = ServiceProvider.GetRequiredService<MainViewModel>();
+
+        var mainWindow = new Views.MainWindow(mainViewModel);
         mainWindow.Show();
     }
 }
-
-
