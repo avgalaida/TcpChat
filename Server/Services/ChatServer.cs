@@ -6,9 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Server.Interfaces;
 using Server.Models.Messages;
+using Newtonsoft.Json;
 
 namespace Server.Services;
-
 public class ChatServer : IChatServer
 {
     private readonly TcpListener _listener;
@@ -72,11 +72,13 @@ public class ChatServer : IChatServer
     {
         var tasks = new List<Task>();
 
+        string json = JsonConvert.SerializeObject(message);
+
         foreach (var client in _clients.Values)
         {
             if (client.ClientId != sender)
             {
-                tasks.Add(SendMessageToClientAsync(client, $"{message.SenderIp}:{message.SenderPort}: {message.Content}"));
+                tasks.Add(SendMessageToClientAsync(client, json));
             }
         }
 

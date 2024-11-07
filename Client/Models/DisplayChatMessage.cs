@@ -1,6 +1,5 @@
-﻿namespace Client.Models.Messages;
-
-public class ChatMessage: BaseMessage
+﻿namespace Client.Models;
+public class DisplayChatMessage
 {
     public string Sender { get; set; }
     public string Content { get; set; }

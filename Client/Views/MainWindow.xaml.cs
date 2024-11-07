@@ -1,23 +1,17 @@
 ﻿using System.Windows;
 using System.Windows.Input;
 using Client.ViewModels;
-using Client.Services;
 
 namespace Client.Views;
 public partial class MainWindow : Window
 {
     private readonly MainViewModel _viewModel;
 
-    public MainWindow()
+    public MainWindow(MainViewModel viewModel)
     {
         InitializeComponent();
 
-        string serverIp = "127.0.0.1"; 
-        int serverPort = 3000;         
-        IChatService chatService = new ChatService(serverIp, serverPort);
-
-        _viewModel = new MainViewModel(chatService);
-
+        _viewModel = viewModel;
         DataContext = _viewModel;
 
         this.Closing += MainWindow_Closing;

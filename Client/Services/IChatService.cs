@@ -1,12 +1,15 @@
-﻿using Client.Models;
+﻿using Client.Models.Messages;
 using System.Net;
 
 namespace Client.Services;
 public interface IChatService
 {
-    event EventHandler<ChatMessage> MessageReceived;
+    event EventHandler<ServerChatMessage> MessageReceived;
+    event EventHandler<HistoryResponse> HistoryReceived;
+
     Task<bool> ConnectAsync();
     Task DisconnectAsync();
-    Task SendMessageAsync(string message);
+    Task SendChatMessageAsync(string content);
+    Task RequestHistoryAsync(int page, int pageSize);
     IPEndPoint LocalEndPoint { get; }
 }

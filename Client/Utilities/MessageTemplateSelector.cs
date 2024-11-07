@@ -1,6 +1,6 @@
-﻿using Client.Models;
-using System.Windows.Controls;
+﻿using System.Windows.Controls;
 using System.Windows;
+using Client.Models;
 
 namespace Client.Utilities;
 
@@ -11,7 +11,7 @@ public class MessageTemplateSelector : DataTemplateSelector
 
     public override DataTemplate SelectTemplate(object item, DependencyObject container)
     {
-        if (item is ChatMessage message)
+        if (item is DisplayChatMessage message)
         {
             return message.IsSentByUser ? SentMessageTemplate : ReceivedMessageTemplate;
         }
