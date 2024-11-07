@@ -1,9 +1,8 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Server.Models;
 
 namespace Server.Data;
-
 public class ChatDbContext : DbContext
 {
     public DbSet<ChatMessage> Messages { get; set; }
@@ -22,5 +21,33 @@ public class ChatDbContext : DbContext
             string connectionString = _configuration.GetConnectionString("DefaultConnection");
             optionsBuilder.UseSqlite(connectionString);
         }
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<ChatMessage>(entity =>
+        {
+            entity.HasKey(e => e.Id); 
+            entity.Property(e => e.Sender)
+                    .IsRequired()
+                    .HasMaxLength(100); 
+
+            entity.Property(e => e.Content)
+                    .IsRequired();
+
+            entity.Property(e => e.Timestamp)
+                    .IsRequired();
+
+            entity.Property(e => e.SenderIp)
+                    .IsRequired()
+                    .HasMaxLength(45); // IPv6 поддержка
+
+            entity.Property(e => e.SenderPort)
+                    .IsRequired();
+
+            entity.HasIndex(e => e.Timestamp);
+        });
     }
 }
