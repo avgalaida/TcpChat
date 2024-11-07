@@ -24,14 +24,12 @@ public class ServiceTests
     /// </summary>
     public ServiceTests()
     {
-        // Инициализация моков
         _mockClientHandlerFactory = new Mock<IClientHandlerFactory>();
         _mockLogger = new Mock<ILogger<ChatServer>>();
         _mockClientHandler = new Mock<IClientHandler>();
         _mockClientHandler.SetupGet(c => c.ClientId).Returns("123");
         _mockClientHandler.SetupGet(c => c.RemoteEndPoint).Returns(new IPEndPoint(IPAddress.Loopback, 5000));
 
-        // Создание конфигурации для тестов
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string>
             {
@@ -39,7 +37,6 @@ public class ServiceTests
             })
             .Build();
 
-        // Создание экземпляра сервера с использованием тестовой конфигурации
         _chatServer = new ChatServer(_mockClientHandlerFactory.Object, _mockLogger.Object, configuration);
     }
 
@@ -118,7 +115,7 @@ public class ServiceTests
     {
         // Arrange
         using var cts = new CancellationTokenSource();
-        cts.Cancel(); // Сразу отменяем токен, чтобы метод StartAsync завершился
+        cts.Cancel(); 
 
         // Act
         await _chatServer.StartAsync(cts.Token);
