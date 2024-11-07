@@ -47,7 +47,6 @@ public class MessageSerializer : IMessageSerializer
     /// <returns>Объект сообщения типа <see cref="BaseMessage"/>.</returns>
     /// <exception cref="InvalidOperationException">Выбрасывается, если не удается десериализовать сообщение.</exception>
     /// <exception cref="JsonException">Выбрасывается при ошибке десериализации JSON.</exception>
-    /// <exception cref="NotSupportedException">Выбрасывается при неподдерживаемом типе сообщения.</exception>
     public BaseMessage Deserialize(string messageJson)
     {
         try
@@ -59,16 +58,19 @@ public class MessageSerializer : IMessageSerializer
             {
                 var serializer = JsonSerializer.Create(_serializerSettings);
 
-                return messageType switch
+                switch (messageType)
                 {
-                    MessageType.ChatMessage => jObject.ToObject<IncomingChatMessage>(serializer)
-                                               ?? throw new InvalidOperationException(
-                                                   "Не удалось десериализовать IncomingChatMessage."),
-                    MessageType.HistoryRequest => jObject.ToObject<HistoryRequest>(serializer)
-                                                  ?? throw new InvalidOperationException(
-                                                      "Не удалось десериализовать HistoryRequest."),
-                    _ => throw new NotSupportedException($"Неподдерживаемый тип сообщения: {typeString}.")
-                };
+                    case MessageType.ChatMessage:
+                        return jObject.ToObject<IncomingChatMessage>(serializer)
+                               ?? throw new InvalidOperationException(
+                                   "Не удалось десериализовать IncomingChatMessage.");
+                    case MessageType.HistoryRequest:
+                        return jObject.ToObject<HistoryRequest>(serializer)
+                               ?? throw new InvalidOperationException("Не удалось десериализовать HistoryRequest.");
+                    default:
+                        _logger.LogWarning($"Неподдерживаемый тип сообщения: {typeString}");
+                        return null;
+                }
             }
             else
             {
