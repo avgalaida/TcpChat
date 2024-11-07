@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Server.Interfaces;
 using Server.Models;
+using Server.Models.Messages;
 
 namespace Server.Services
 {

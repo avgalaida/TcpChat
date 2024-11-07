@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using Server.Models;
+using Server.Models.Messages;
 
 namespace Server.Data;
 public class ChatDbContext : DbContext

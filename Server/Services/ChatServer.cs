@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Server.Interfaces;
-using Server.Models;
+using Server.Models.Messages;
 
 namespace Server.Services;
 

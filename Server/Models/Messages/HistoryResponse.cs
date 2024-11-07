@@ -1,4 +1,4 @@
-﻿namespace Server.Models;
+﻿namespace Server.Models.Messages;
 
 public class HistoryResponse : BaseMessage
 {

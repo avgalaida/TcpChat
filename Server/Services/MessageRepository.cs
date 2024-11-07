@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Server.Data;
 using Server.Interfaces;
-using Server.Models;
+using Server.Models.Messages;
 
 namespace Server.Services;
 
