@@ -18,8 +18,8 @@ public class MessageSerializer : IMessageSerializer
         {
             Converters = new List<JsonConverter> { new StringEnumConverter() },
             NullValueHandling = NullValueHandling.Ignore,
-            StringEscapeHandling = StringEscapeHandling.Default, // Добавлено для предотвращения экранирования не-ASCII
-            Formatting = Formatting.None // Можно установить Formatting.Indented для форматированного JSON
+            StringEscapeHandling = StringEscapeHandling.Default, 
+            Formatting = Formatting.None
         };
     }
 
