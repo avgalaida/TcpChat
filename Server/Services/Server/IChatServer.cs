@@ -1,11 +1,12 @@
 using Server.Models.Messages;
+using Server.Services.Client;
 
-namespace Server.Interfaces;
+namespace Server.Services.Server;
 
 public interface IChatServer
 {
     Task StartAsync();
     void AddClient(IClientHandler client);
     void RemoveClient(IClientHandler client);
-    Task BroadcastMessageAsync(ChatMessage message, string sender);
+    Task BroadcastMessageAsync(OutgoingChatMessage message);
 }

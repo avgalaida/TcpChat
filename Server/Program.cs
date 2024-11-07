@@ -3,9 +3,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using NLog.Extensions.Logging;
 using Server.Data;
-using Server.Interfaces;
-using Server.Services;
 using Microsoft.EntityFrameworkCore;
+using Server.Models.Messages;
+using Server.Repository;
+using Server.Services.Client;
+using Server.Services.Factories;
+using Server.Services.Handlers;
+using Server.Services.Server;
+using Server.Utilities;
 
 Console.OutputEncoding = System.Text.Encoding.UTF8;
 
@@ -17,6 +22,15 @@ var configuration = new ConfigurationBuilder()
 var services = new ServiceCollection();
 
 services.AddSingleton<IConfiguration>(configuration);
+
+services.AddSingleton<IMessageSerializer, MessageSerializer>();
+
+services.AddTransient<IMessageHandler<IncomingChatMessage>, ChatMessageHandler>();
+services.AddTransient<IMessageHandler<HistoryRequest>, HistoryRequestHandler>();
+
+services.AddSingleton<IMessageHandlerFactory, MessageHandlerFactory>();
+
+services.AddSingleton<IClientHandlerFactory, ClientHandlerFactory>();
 
 services.AddSingleton<IChatServer, ChatServer>();
 services.AddTransient<IClientHandler, ClientHandler>();
@@ -33,6 +47,12 @@ services.AddLogging(loggingBuilder =>
 });
 
 var serviceProvider = services.BuildServiceProvider();
+
+using (var scope = serviceProvider.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ChatDbContext>();
+    dbContext.Database.Migrate();
+}
 
 var server = serviceProvider.GetRequiredService<IChatServer>();
 await server.StartAsync();
