@@ -1,4 +1,5 @@
 ﻿namespace Client.Models.Messages;
+
 public class ServerChatMessage : BaseMessage
 {
     public int Id { get; set; }

@@ -1,7 +1,8 @@
 ﻿namespace Client.Models.Messages;
-public enum MessageType : byte
+
+public enum MessageType
 {
-    ChatMessage = 0x01,
-    HistoryRequest = 0x02,
-    HistoryResponse = 0x03
+    ChatMessage,
+    HistoryRequest,
+    HistoryResponse
 }
