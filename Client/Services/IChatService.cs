@@ -1,19 +1,17 @@
-﻿using System;
-using System.Net;
-using System.Threading.Tasks;
+﻿using System.Net;
 using Client.Models.Messages;
 
 namespace Client.Services;
 
 /// <summary>
-/// Интерфейс для реализации сервиса чата для клиентского WPF-приложения.
+/// Интерфейс для реализации сервиса чата.
 /// </summary>
 public interface IChatService
 {
     /// <summary>
     /// Событие, возникающее при получении сообщения от сервера.
     /// </summary>
-    event EventHandler<ServerChatMessage> MessageReceived;
+    event EventHandler<IncomingChatMessage> MessageReceived;
 
     /// <summary>
     /// Событие, возникающее при получении истории сообщений.
@@ -23,7 +21,12 @@ public interface IChatService
     /// <summary>
     /// Событие, возникающее при возникновении ошибки.
     /// </summary>
-    event EventHandler<string> OnError;
+    event EventHandler<Exception> OnError;
+
+    /// <summary>
+    /// Проверяет, подключен ли клиент к серверу.
+    /// </summary>
+    bool IsConnected { get; }
 
     /// <summary>
     /// Асинхронно подключается к серверу чата.
@@ -55,7 +58,8 @@ public interface IChatService
     IPEndPoint LocalEndPoint { get; }
 
     /// <summary>
-    /// Возвращает текущее состояние подключения.
+    /// Возвращает строковое представление локальной конечной точки в формате IP:порт.
     /// </summary>
-    bool IsConnected { get; }
+    /// <returns>Строка с форматом локальной конечной точки.</returns>
+    string GetFormattedLocalEndPoint();
 }
