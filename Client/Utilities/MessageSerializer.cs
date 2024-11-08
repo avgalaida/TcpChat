@@ -1,7 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
-using System;
 using Client.Models.Messages;
 using Microsoft.Extensions.Logging;
 
