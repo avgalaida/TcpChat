@@ -115,7 +115,7 @@ public class ChatViewModel : ViewModelBase
     /// Асинхронно устанавливает соединение с сервером чата.
     /// </summary>
     /// <returns>Возвращает <c>true</c>, если соединение успешно установлено; иначе <c>false</c>.</returns>
-    private async Task ConnectAsync()
+    internal async Task ConnectAsync()
     {
         try
         {
@@ -141,7 +141,7 @@ public class ChatViewModel : ViewModelBase
     /// Асинхронно отключает соединение от сервера чата.
     /// </summary>
     /// <returns>Задача, представляющая асинхронную операцию.</returns>
-    private async Task DisconnectAsync()
+    internal async Task DisconnectAsync()
     {
         try
         {
@@ -159,7 +159,7 @@ public class ChatViewModel : ViewModelBase
     /// Асинхронно отправляет новое сообщение в чат.
     /// </summary>
     /// <returns>Задача, представляющая асинхронную операцию.</returns>
-    private async Task SendMessageAsync()
+    internal async Task SendMessageAsync()
     {
         if (!string.IsNullOrWhiteSpace(NewMessage) && IsConnected)
         {
@@ -188,7 +188,7 @@ public class ChatViewModel : ViewModelBase
     /// Асинхронно запрашивает историю сообщений с сервера.
     /// </summary>
     /// <returns>Задача, представляющая асинхронную операцию.</returns>
-    private async Task RequestHistoryAsync()
+    internal async Task RequestHistoryAsync()
     {
         if (IsConnected)
         {
@@ -209,7 +209,7 @@ public class ChatViewModel : ViewModelBase
     /// </summary>
     /// <param name="sender">Источник события.</param>
     /// <param name="serverMessage">Полученное сообщение от сервера.</param>
-    private void OnMessageReceived(object sender, IncomingChatMessage serverMessage)
+    internal void OnMessageReceived(object sender, IncomingChatMessage serverMessage)
     {
         var isSentByUser = IsMessageSentByUser(serverMessage);
         var displayMessage = new DisplayChatMessage
@@ -232,7 +232,7 @@ public class ChatViewModel : ViewModelBase
     /// </summary>
     /// <param name="sender">Источник события.</param>
     /// <param name="history">Ответ с историей сообщений.</param>
-    private void OnHistoryReceived(object sender, HistoryResponse history)
+    internal void OnHistoryReceived(object sender, HistoryResponse history)
     {
         // Обновление коллекции сообщений в UI-потоке
         Application.Current.Dispatcher.Invoke(() =>
@@ -277,7 +277,7 @@ public class ChatViewModel : ViewModelBase
             Timestamp = DateTime.Now,
             IsSentByUser = false
         };
-        Application.Current.Dispatcher.Invoke(() => Messages.Add(systemMessage));
+        Application.Current.Dispatcher.InvokeAsync(() => Messages.Add(systemMessage));
     }
 
     /// <summary>
@@ -286,7 +286,7 @@ public class ChatViewModel : ViewModelBase
     /// <param name="message">Текст сообщения об ошибке.</param>
     private void ShowErrorMessage(string message)
     {
-        Application.Current.Dispatcher.Invoke(() =>
+        Application.Current.Dispatcher.InvokeAsync(() =>
         {
             MessageBox.Show(message, "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
         });
