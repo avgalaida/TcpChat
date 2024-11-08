@@ -220,8 +220,7 @@ public class ChatViewModel : ViewModelBase
             IsSentByUser = isSentByUser
         };
 
-        // Обновление коллекции сообщений в UI-потоке
-        Application.Current.Dispatcher.Invoke(() =>
+        Application.Current.Dispatcher.InvokeAsync(() =>
         {
             Messages.Add(displayMessage);
         });
@@ -234,8 +233,7 @@ public class ChatViewModel : ViewModelBase
     /// <param name="history">Ответ с историей сообщений.</param>
     internal void OnHistoryReceived(object sender, HistoryResponse history)
     {
-        // Обновление коллекции сообщений в UI-потоке
-        Application.Current.Dispatcher.Invoke(() =>
+        Application.Current.Dispatcher.InvokeAsync(() =>
         {
             foreach (var msg in history.Messages)
             {
