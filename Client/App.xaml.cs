@@ -1,40 +1,68 @@
-﻿using Client.Services;
-using Client.ViewModels;
+﻿using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Windows;
+using Client.Services;
+using Client.ViewModels;
+using Client.Utilities;
+using Client.Views;
 
 namespace Client;
 
+/// <summary>
+/// Основной класс приложения, отвечающий за инициализацию и настройку зависимостей, а также запуск главного окна.
+/// </summary>
 public partial class App : Application
 {
-    public new static App Current => (App)Application.Current;
-
+    /// <summary>
+    /// Провайдер сервисов, используемый для разрешения зависимостей.
+    /// </summary>
     public IServiceProvider ServiceProvider { get; private set; }
 
+    /// <summary>
+    /// Вызывается при запуске приложения. Настраивает сервисы и отображает главное окно.
+    /// </summary>
+    /// <param name="e">Аргументы события запуска.</param>
     protected override void OnStartup(StartupEventArgs e)
     {
-        var services = new ServiceCollection();
+        base.OnStartup(e);
 
-        services.AddLogging(configure =>
-        {
-            configure.AddConsole();
-            configure.SetMinimumLevel(LogLevel.Debug);
-        });
+        var serviceCollection = new ServiceCollection();
+        ConfigureServices(serviceCollection);
+        ServiceProvider = serviceCollection.BuildServiceProvider();
 
+        var mainWindow = ServiceProvider.GetRequiredService<MainWindow>();
+        mainWindow.DataContext = ServiceProvider.GetRequiredService<ChatViewModel>();
+        mainWindow.Show();
+    }
+
+    /// <summary>
+    /// Конфигурирует сервисы и регистрирует их в контейнере зависимостей.
+    /// </summary>
+    /// <param name="services">Коллекция сервисов для регистрации.</param>
+    private void ConfigureServices(IServiceCollection services)
+    {
+        // Регистрация ViewModel
+        services.AddSingleton<ChatViewModel>();
+
+        // Регистрация окна
+        services.AddTransient<MainWindow>();
+
+        // Регистрация сервисов и утилит с передачей параметров
         services.AddSingleton<IChatService>(provider =>
         {
             var logger = provider.GetRequiredService<ILogger<ChatService>>();
-            return new ChatService("127.0.0.1", 3000, logger);
+            var serializer = provider.GetRequiredService<IMessageSerializer>();
+            // Параметры подключения могут быть вынесены в конфигурационный файл или настройки
+            return new ChatService("127.0.0.1", 3000, logger, serializer);
         });
 
-        services.AddTransient<MainViewModel>();
+        services.AddSingleton<IMessageSerializer, MessageSerializer>();
 
-        ServiceProvider = services.BuildServiceProvider();
-
-        var mainViewModel = ServiceProvider.GetRequiredService<MainViewModel>();
-
-        var mainWindow = new Views.MainWindow(mainViewModel);
-        mainWindow.Show();
+        // Настройка логгирования
+        services.AddLogging(configure =>
+        {
+            configure.AddConsole();
+            configure.SetMinimumLevel(LogLevel.Debug); // Установите уровень логирования по необходимости
+        });
     }
 }
