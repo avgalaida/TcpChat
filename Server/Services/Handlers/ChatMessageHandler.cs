@@ -50,7 +50,7 @@ public class ChatMessageHandler : IMessageHandler<IncomingChatMessage>
                 Type = MessageType.ChatMessage,
                 Sender = $"User_{clientHandler.ClientId[..8]}",
                 Content = message.Content,
-                Timestamp = DateTime.UtcNow,
+                Timestamp = DateTime.Now,
                 SenderIp = remoteEndPoint?.Address.ToString() ?? "Unknown",
                 SenderPort = remoteEndPoint?.Port ?? 0
             };

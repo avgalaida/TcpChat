@@ -26,7 +26,6 @@ public class MessageHandlerFactoryTests
         _mockLogger = new Mock<ILogger<MessageHandlerFactory>>();
         _mockChatMessageHandler = new Mock<IMessageHandler<IncomingChatMessage>>();
 
-        // Настройка возвращения обработчика для определенного типа сообщения
         _mockServiceProvider.Setup(sp => sp.GetService(typeof(IMessageHandler<IncomingChatMessage>)))
             .Returns(_mockChatMessageHandler.Object);
 
@@ -61,7 +60,6 @@ public class MessageHandlerFactoryTests
         var mockClientHandler = new Mock<IClientHandler>();
         var incomingMessage = new IncomingChatMessage { Content = "Test Content" };
 
-        // Настройка обработки исключения при вызове HandleAsync
         _mockChatMessageHandler
             .Setup(handler => handler.HandleAsync(incomingMessage, mockClientHandler.Object))
             .Throws(new InvalidOperationException("Ошибка при обработке сообщения"));

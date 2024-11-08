@@ -115,7 +115,7 @@ public class ServiceTests
     {
         // Arrange
         using var cts = new CancellationTokenSource();
-        cts.Cancel(); 
+        cts.Cancel();
 
         // Act
         await _chatServer.StartAsync(cts.Token);

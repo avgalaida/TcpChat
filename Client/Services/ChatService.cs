@@ -1,47 +1,92 @@
-﻿using System.Net.Sockets;
+﻿using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using Client.Models.Messages;
-using Newtonsoft.Json;
-using System.Net;
+using Client.Utilities;
 using Microsoft.Extensions.Logging;
 
 namespace Client.Services;
-public class ChatService : IChatService
-{
-    public event EventHandler<ServerChatMessage> MessageReceived;
-    public event EventHandler<HistoryResponse> HistoryReceived;
 
+/// <summary>
+/// Сервис для управления чатом через TCP-соединение.
+/// </summary>
+public class ChatService : IChatService, IDisposable
+{
     private TcpClient _tcpClient;
     private NetworkStream _stream;
     private CancellationTokenSource _cts;
+    private bool _disposed;
 
     private readonly string _serverIp;
     private readonly int _serverPort;
     private readonly ILogger<ChatService> _logger;
+    private readonly IMessageSerializer _serializer;
 
     private const int MaxMessageLength = 10 * 1024 * 1024; // 10 МБ
 
-    public IPEndPoint LocalEndPoint
-    {
-        get
-        {
-            if (_tcpClient?.Client?.LocalEndPoint is IPEndPoint endPoint)
-            {
-                return endPoint;
-            }
-            return null;
-        }
-    }
+    /// <summary>
+    /// Событие, возникающее при получении нового сообщения чата.
+    /// </summary>
+    public event EventHandler<IncomingChatMessage> MessageReceived;
 
-    public ChatService(string serverIp, int serverPort, ILogger<ChatService> logger)
+    /// <summary>
+    /// Событие, возникающее при получении истории сообщений.
+    /// </summary>
+    public event EventHandler<HistoryResponse> HistoryReceived;
+
+    /// <summary>
+    /// Событие, возникающее при возникновении ошибки.
+    /// </summary>
+    public event EventHandler<Exception> OnError;
+
+    /// <summary>
+    /// Указывает, подключен ли сервис к серверу.
+    /// </summary>
+    public bool IsConnected => _tcpClient?.Connected ?? false;
+
+    /// <summary>
+    /// Возвращает локальную конечную точку соединения.
+    /// </summary>
+    public IPEndPoint LocalEndPoint => _tcpClient?.Client?.LocalEndPoint as IPEndPoint;
+
+    /// <summary>
+    /// Инициализирует новый экземпляр класса <see cref="ChatService"/>.
+    /// </summary>
+    /// <param name="serverIp">IP-адрес сервера.</param>
+    /// <param name="serverPort">Порт сервера.</param>
+    /// <param name="logger">Логгер для ведения журналов.</param>
+    /// <param name="serializer">Сериализатор сообщений.</param>
+    public ChatService(string serverIp, int serverPort, ILogger<ChatService> logger, IMessageSerializer serializer)
     {
-        _serverIp = serverIp;
+        _serverIp = serverIp ?? throw new ArgumentNullException(nameof(serverIp));
         _serverPort = serverPort;
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
     }
 
+    /// <summary>
+    /// Возвращает локальную конечную точку в формате "IP:Port".
+    /// </summary>
+    /// <returns>Строка с локальной конечной точкой.</returns>
+    public string GetFormattedLocalEndPoint()
+    {
+        if (LocalEndPoint != null)
+        {
+            var ip = LocalEndPoint.Address.MapToIPv4().ToString();
+            var port = LocalEndPoint.Port;
+            return $"{ip}:{port}";
+        }
+        return string.Empty;
+    }
+
+    /// <summary>
+    /// Асинхронно устанавливает соединение с сервером.
+    /// </summary>
+    /// <returns>Возвращает <c>true</c>, если соединение успешно установлено; иначе <c>false</c>.</returns>
     public async Task<bool> ConnectAsync()
     {
+        EnsureNotDisposed();
+
         try
         {
             _tcpClient = new TcpClient();
@@ -49,6 +94,7 @@ public class ChatService : IChatService
             _stream = _tcpClient.GetStream();
             _cts = new CancellationTokenSource();
 
+            // Запуск задачи приема сообщений
             _ = Task.Run(() => ReceiveMessagesAsync(_cts.Token), _cts.Token);
 
             _logger.LogInformation("Подключение к серверу успешно.");
@@ -56,18 +102,25 @@ public class ChatService : IChatService
         }
         catch (SocketException ex)
         {
-            _logger.LogError(ex, "SocketException при подключении к серверу.");
+            _logger.LogError(ex, "Ошибка подключения к серверу.");
+            OnError?.Invoke(this, ex);
             return false;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Exception при подключении к серверу.");
+            _logger.LogError(ex, "Общая ошибка подключения.");
+            OnError?.Invoke(this, ex);
             return false;
         }
     }
 
+    /// <summary>
+    /// Асинхронно отключает соединение от сервера.
+    /// </summary>
     public async Task DisconnectAsync()
     {
+        EnsureNotDisposed();
+
         if (_cts != null)
         {
             _cts.Cancel();
@@ -76,52 +129,104 @@ public class ChatService : IChatService
         }
 
         await Task.Run(() => Disconnect());
+
+        // Подготовка клиента к повторному подключению
+        _tcpClient = new TcpClient();
     }
 
+    /// <summary>
+    /// Асинхронно отправляет сообщение в чат.
+    /// </summary>
+    /// <param name="content">Содержимое сообщения.</param>
+    /// <exception cref="InvalidOperationException">Если нет установленного соединения.</exception>
     public async Task SendChatMessageAsync(string content)
     {
+        EnsureNotDisposed();
+        if (string.IsNullOrWhiteSpace(content))
+            throw new ArgumentException("Содержимое сообщения не может быть пустым.", nameof(content));
+
         if (_stream == null)
         {
-            _logger.LogWarning("Попытка отправить сообщение без подключения к серверу.");
-            return;
+            var ex = new InvalidOperationException("Попытка отправить сообщение без подключения.");
+            _logger.LogError(ex, "Попытка отправить сообщение без подключения.");
+            OnError?.Invoke(this, ex);
+            throw ex;
         }
 
-        var sendMessage = new SendChatMessage
+        var message = new IncomingChatMessage
         {
             Type = MessageType.ChatMessage,
             Content = content
         };
+        var serializedMessage = _serializer.Serialize(message);
 
-        var json = JsonConvert.SerializeObject(sendMessage);
-        await SendMessageAsync(json);
+        await SendMessageAsync(serializedMessage);
     }
 
+    /// <summary>
+    /// Асинхронно запрашивает историю сообщений.
+    /// </summary>
+    /// <param name="page">Номер страницы истории.</param>
+    /// <param name="pageSize">Размер страницы.</param>
+    /// <exception cref="InvalidOperationException">Если нет установленного соединения.</exception>
     public async Task RequestHistoryAsync(int page, int pageSize)
     {
+        EnsureNotDisposed();
+
+        if (page < 1)
+            throw new ArgumentOutOfRangeException(nameof(page), "Номер страницы должен быть больше нуля.");
+
+        if (pageSize < 1)
+            throw new ArgumentOutOfRangeException(nameof(pageSize), "Размер страницы должен быть больше нуля.");
+
         if (_stream == null)
         {
-            _logger.LogWarning("Попытка запросить историю без подключения к серверу.");
-            return;
+            var ex = new InvalidOperationException("Попытка запросить историю без подключения.");
+            _logger.LogError(ex, "Попытка запросить историю без подключения.");
+            OnError?.Invoke(this, ex);
+            throw ex;
         }
 
-        // Валидация параметров
-        if (page < 1) page = 1;
-        if (pageSize < 1) pageSize = 10;
-        if (pageSize > 100) pageSize = 100;
-
-        var historyRequest = new HistoryRequest
+        var request = new HistoryRequest
         {
             Type = MessageType.HistoryRequest,
             Page = page,
             PageSize = pageSize
         };
+        var serializedRequest = _serializer.Serialize(request);
 
-        var json = JsonConvert.SerializeObject(historyRequest);
-        await SendMessageAsync(json);
+        await SendMessageAsync(serializedRequest);
     }
 
+    /// <summary>
+    /// Освобождает ресурсы, используемые экземпляром <see cref="ChatService"/>.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed) return;
+
+        DisconnectAsync().GetAwaiter().GetResult();
+
+        _stream?.Dispose();
+        _tcpClient?.Dispose();
+        _cts?.Dispose();
+
+        _disposed = true;
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Отправляет сообщение на сервер.
+    /// </summary>
+    /// <param name="message">Сериализованное сообщение.</param>
     private async Task SendMessageAsync(string message)
     {
+        if (string.IsNullOrEmpty(message))
+        {
+            _logger.LogWarning("Попытка отправить пустое сообщение.");
+            return;
+        }
+
         try
         {
             var messageBytes = Encoding.UTF8.GetBytes(message);
@@ -135,9 +240,14 @@ public class ChatService : IChatService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ошибка при отправке сообщения.");
+            OnError?.Invoke(this, ex);
         }
     }
 
+    /// <summary>
+    /// Асинхронно получает сообщения от сервера.
+    /// </summary>
+    /// <param name="cancellationToken">Токен отмены операции.</param>
     private async Task ReceiveMessagesAsync(CancellationToken cancellationToken)
     {
         try
@@ -151,37 +261,14 @@ public class ChatService : IChatService
                     break;
                 }
 
-                var baseMessage = JsonConvert.DeserializeObject<BaseMessage>(message);
+                var baseMessage = _serializer.Deserialize(message);
                 if (baseMessage == null)
                 {
                     _logger.LogWarning("Получено некорректное сообщение от сервера.");
                     continue;
                 }
 
-                switch (baseMessage.Type)
-                {
-                    case MessageType.ChatMessage:
-                        var serverChatMessage = JsonConvert.DeserializeObject<ServerChatMessage>(message);
-                        if (serverChatMessage != null)
-                        {
-                            MessageReceived?.Invoke(this, serverChatMessage);
-                            _logger.LogInformation("Получено сообщение: {Content} от {Sender}", serverChatMessage.Content, serverChatMessage.Sender);
-                        }
-                        break;
-
-                    case MessageType.HistoryResponse:
-                        var historyResponse = JsonConvert.DeserializeObject<HistoryResponse>(message);
-                        if (historyResponse != null)
-                        {
-                            HistoryReceived?.Invoke(this, historyResponse);
-                            _logger.LogInformation("Получен ответ истории: Страница {Page} из {TotalPages}", historyResponse.Page, Math.Ceiling((double)historyResponse.TotalMessages / historyResponse.PageSize));
-                        }
-                        break;
-
-                    default:
-                        _logger.LogWarning("Получен неизвестный тип сообщения: {Type}", baseMessage.Type);
-                        break;
-                }
+                HandleIncomingMessage(baseMessage);
             }
         }
         catch (OperationCanceledException)
@@ -191,6 +278,7 @@ public class ChatService : IChatService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ошибка при получении сообщений.");
+            OnError?.Invoke(this, ex);
         }
         finally
         {
@@ -198,6 +286,35 @@ public class ChatService : IChatService
         }
     }
 
+    /// <summary>
+    /// Обрабатывает полученное сообщение в зависимости от его типа.
+    /// </summary>
+    /// <param name="baseMessage">Базовое сообщение.</param>
+    private void HandleIncomingMessage(BaseMessage baseMessage)
+    {
+        switch (baseMessage)
+        {
+            case IncomingChatMessage chatMessage:
+                MessageReceived?.Invoke(this, chatMessage);
+                _logger.LogInformation("Получено сообщение: {Content} от {Sender}", chatMessage.Content, chatMessage.Sender);
+                break;
+
+            case HistoryResponse historyResponse:
+                HistoryReceived?.Invoke(this, historyResponse);
+                _logger.LogInformation("Получена история сообщений.");
+                break;
+
+            default:
+                _logger.LogWarning("Получен неизвестный тип сообщения: {Type}", baseMessage.Type);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Асинхронно читает сообщение из потока.
+    /// </summary>
+    /// <param name="cancellationToken">Токен отмены операции.</param>
+    /// <returns>Содержимое сообщения в виде строки или <c>null</c>, если соединение закрыто.</returns>
     private async Task<string> ReadMessageAsync(CancellationToken cancellationToken)
     {
         try
@@ -213,7 +330,7 @@ public class ChatService : IChatService
 
             if (messageLength <= 0 || messageLength > MaxMessageLength)
             {
-                _logger.LogWarning("Получено сообщение с некорректной длиной: {Length}", messageLength);
+                _logger.LogWarning("Некорректная длина сообщения: {Length}", messageLength);
                 return null;
             }
 
@@ -224,8 +341,7 @@ public class ChatService : IChatService
                 return null;
             }
 
-            var message = Encoding.UTF8.GetString(messageBuffer);
-            return message;
+            return Encoding.UTF8.GetString(messageBuffer);
         }
         catch (Exception ex)
         {
@@ -234,6 +350,15 @@ public class ChatService : IChatService
         }
     }
 
+    /// <summary>
+    /// Асинхронно читает заданное количество байт из потока.
+    /// </summary>
+    /// <param name="stream">Поток для чтения.</param>
+    /// <param name="buffer">Буфер для данных.</param>
+    /// <param name="offset">Смещение в буфере.</param>
+    /// <param name="size">Количество байт для чтения.</param>
+    /// <param name="cancellationToken">Токен отмены операции.</param>
+    /// <returns>Количество прочитанных байт.</returns>
     private async Task<int> ReadExactAsync(NetworkStream stream, byte[] buffer, int offset, int size, CancellationToken cancellationToken)
     {
         int totalBytesRead = 0;
@@ -250,6 +375,9 @@ public class ChatService : IChatService
         return totalBytesRead;
     }
 
+    /// <summary>
+    /// Отключает от сервера и освобождает ресурсы.
+    /// </summary>
     private void Disconnect()
     {
         try
@@ -261,6 +389,17 @@ public class ChatService : IChatService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Ошибка при отключении от сервера.");
+            OnError?.Invoke(this, ex);
         }
+    }
+
+    /// <summary>
+    /// Проверяет, не был ли объект уже освобожден.
+    /// </summary>
+    /// <exception cref="ObjectDisposedException">Если объект уже освобожден.</exception>
+    private void EnsureNotDisposed()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(ChatService));
     }
 }

@@ -1,4 +1,5 @@
 ﻿namespace Client.Models.Messages;
+
 public class HistoryRequest : BaseMessage
 {
     public int Page { get; set; }
